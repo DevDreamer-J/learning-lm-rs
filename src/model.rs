@@ -170,16 +170,13 @@ fn mlp(
     OP::rms_norm(hidden_states, residual, rms_w, eps);
     OP::matmul_transb(gate, 1.0, hidden_states, w_gate, 1.0);
     OP::matmul_transb(up, 1.0, hidden_states, w_up, 1.0);
-
-    OP::silu(gate, up);
-
-    OP::matmul_transb(hidden_states, 0.0, gate, w_down, 1.0);
-
-    let residual_size = residual.size();
-    let residual_data = unsafe { residual.data_mut() };
-    for i in 0..residual_size{
-        residual_data[i] += hidden_states.data()[i];
-    };
+    OP::silu(up, gate);
+    OP::matmul_transb(hidden_states, 0.0, up, w_down, 1.0);
+    for i in 0..residual.size() {
+        unsafe {
+            residual.data_mut()[i] += hidden_states.data()[i];
+        }
+    }
     // todo!("Implement mlp");
 }
 

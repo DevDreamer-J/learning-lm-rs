@@ -75,7 +75,7 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
 pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
     // todo!("实现 rms_norm，计算前做一些必要的检查会帮助你后续调试")
     assert!(y.size() == x.size());
-    for i in 0..y.shape().len(){
+    for i in 0..y.shape().len() {
         assert!(y.shape()[i] == x.shape()[i])
     }
     assert!(w.size() == x.shape()[1]);
@@ -101,14 +101,14 @@ pub fn silu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
     // let _x = x.data();
     // todo!("实现 silu，这里给了一些前期准备工作的提示，你可以参考");
     assert!(y.size() == x.size());
-    for i in 0..y.shape().len(){
+    for i in 0..y.shape().len() {
         assert!(y.shape()[i] == x.shape()[i])
     }
-    let y_size = y.size();
-    let y_ = unsafe { y.data_mut() };
-    let x_ = x.data();
-    for i in 0..y_size {
-        y_[i] = (1 as f32 / (1 as f32 + E.powf(-x_[i]))) * x_[i] * y_[i];
+    for i in 0..y.size() {
+        unsafe {
+            y.data_mut()[i] =
+                (1 as f32 / (1 as f32 + E.powf(-x.data()[i]))) * x.data()[i] * y.data_mut()[i];
+        }
     }
 }
 
@@ -116,22 +116,21 @@ pub fn silu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
 // hint: You don't need to do an explicit transpose of B
 pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor<f32>, alpha: f32) {
     // todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
-    assert!(c.shape().len()==2);
-    assert!(a.shape().len()==2);
-    assert!(b.shape().len()==2);
+    assert!(c.shape().len() == 2);
+    assert!(a.shape().len() == 2);
+    assert!(b.shape().len() == 2);
     assert!(c.shape()[0] == a.shape()[0]);
     assert!(c.shape()[1] == b.shape()[0]);
-    let c_len = c.size();
-    let c_shape = c.shape().clone();
-    let c_data = unsafe { c.data_mut() };
-    for i in 0..c_len {
+    for i in 0..c.size() {
         let mut sum = 0 as f32;
         for j in 0..a.shape()[1] {
             sum = sum
-                + a.data()[(i / c_shape[1]) * a.shape()[1] + j]
-                    * b.data()[(i % c_shape[1]) * a.shape()[1] + j]
+                + a.data()[(i / c.shape()[1]) * a.shape()[1] + j]
+                    * b.data()[(i % c.shape()[1]) * a.shape()[1] + j]
         }
-        c_data[i] = alpha * sum + c_data[i] * beta;
+        unsafe {
+            c.data_mut()[i] = alpha * sum + c.data_mut()[i] * beta;
+        }
     }
 }
 
