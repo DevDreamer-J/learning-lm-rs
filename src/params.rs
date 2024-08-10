@@ -35,13 +35,8 @@ impl LLamaParams<f32> {
         // }
 
         let get_tensor = |name: &str| {
-            let h = safetensor.tensors();
-            for i in h {
-                if i.0.eq(name){
-                    i.1;
-                }
-            }
-            Tensor::<f32>::default(&vec![0])
+            let h: safetensors::tensor::TensorView = safetensor.tensor(name).unwrap();
+            Tensor::<f32>::default(&h.shape().to_vec())
         };
 
         LLamaParams {
