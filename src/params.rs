@@ -1,4 +1,4 @@
-use std::vec;
+use core::slice;
 
 use crate::config::LlamaConfigJson;
 use crate::tensor::Tensor;
@@ -33,25 +33,53 @@ impl LLamaParams<f32> {
         //     embedding_table: get_tensor(...),
         //     ...
         // }
-
+        let layers = config.num_hidden_layers;
+        safetensor.names().iter().for_each(|name| {
+            println!("{}", name);
+        });
         let get_tensor = |name: &str| {
-            let h: safetensors::tensor::TensorView = safetensor.tensor(name).unwrap();
-            Tensor::<f32>::default(&h.shape().to_vec())
+            match safetensor.tensor(name){
+                Ok(tensorView)=>{
+                    let new_tensor_data=unsafe { slice::from_raw_parts(tensorView.data().as_ptr() as *const f32, tensorView.shape().iter().product::<usize>())};
+                    Tensor::new(Vec::from(new_tensor_data), &tensorView.shape().to_vec())
+                }
+                Err(_) => {
+                    panic!("params:llamaparams:from_safetensors")
+                },
+            }
         };
 
         LLamaParams {
-            embedding_table: todo!(),
-            rms_att_w: todo!(),
-            wq: todo!(),
-            wk: todo!(),
-            wv: todo!(),
-            wo: todo!(),
-            rms_ffn_w: todo!(),
-            w_up: todo!(),
-            w_gate: todo!(),
-            w_down: todo!(),
-            rms_out_w: todo!(),
-            lm_head: todo!(),
+            embedding_table: get_tensor("lm_head.weight"),
+            rms_att_w: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.input_layernorm.weight")))
+                .collect(),
+            wq: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.self_attn.q_proj.weight")))
+                .collect(),
+            wk: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.self_attn.k_proj.weight")))
+                .collect(),
+            wv: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.self_attn.v_proj.weight")))
+                .collect(),
+            wo: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.self_attn.o_proj.weight")))
+                .collect(),
+            rms_ffn_w: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.post_attention_layernorm.weight")))
+                .collect(),
+            w_up: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.mlp.up_proj.weight")))
+                .collect(),
+            w_gate: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.mlp.gate_proj.weight")))
+                .collect(),
+            w_down: (0..layers)
+                .map(|i| get_tensor(&format!("model.layers.{i}.mlp.down_proj.weight")))
+                .collect(),
+            rms_out_w: get_tensor("model.norm.weight"),
+            lm_head: get_tensor("lm_head.weight"),
         }
     }
 }
